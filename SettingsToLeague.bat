@@ -1,3 +1,3 @@
 @echo off
-py -3 SettingsConverter.py --target league
+py -3 settings_converter.py --target league
 pause
