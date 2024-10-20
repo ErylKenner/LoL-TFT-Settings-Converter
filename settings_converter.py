@@ -5,21 +5,34 @@ import os
 
 PERSISTED_SETTINGS_FILE = pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\PersistedSettings.json").resolve()
 INPUTS_CONFIG_FILE = pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\Input.ini").resolve()
+GAME_CFG_FILE = pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\game.cfg").resolve()
+
+FILES = [INPUTS_CONFIG_FILE, GAME_CFG_FILE]
 
 LEAGUE_VALUE = "league"
 TFT_VALUE = "tft"
 
 FIELDS_TO_CHANGE = {
-    "GameEvents": {
-        "evtPlayerAttackMoveClick": {
-            LEAGUE_VALUE: "[Button 1]",
-            TFT_VALUE: "[<Unbound>]",
+    INPUTS_CONFIG_FILE: {
+        "GameEvents": {
+            "evtPlayerAttackMoveClick": {
+                LEAGUE_VALUE: "[Button 1]",
+                TFT_VALUE: "[<Unbound>]",
+            },
+            "evtPlayerAttackMove": {
+                LEAGUE_VALUE: "[Button 1],[<Unbound>]",
+                TFT_VALUE: "[<Unbound>],[<Unbound>]",
+            },
         },
-        "evtPlayerAttackMove": {
-            LEAGUE_VALUE: "[Button 1],[<Unbound>]",
-            TFT_VALUE: "[<Unbound>],[<Unbound>]",
+    },
+    GAME_CFG_FILE: {
+        "General": {
+            "WindowMode": {
+                LEAGUE_VALUE: "0",
+                TFT_VALUE: "1",
+            }
         },
-    }
+    },
 }
 COLUMN_HEADERS = ["Field", "Existing Value", "New Value"]
 DOES_NOT_EXIST = "DOES NOT EXIST"
@@ -79,24 +92,16 @@ def print_table_row(values, column_sizes):
     print(value_str)
 
 
-def main():
-    """Main function."""
-    parser = argparse.ArgumentParser(
-        prog="SettingsConverter",
-        description="Used for converting: League Setting <--> TFT_VALUE Settings",
-    )
-    parser.add_argument("-t", "--target", type=str, choices=[LEAGUE_VALUE, TFT_VALUE], required=True)
-    args = parser.parse_args()
-
+def update_file(args, file):
     # Open config file
     config_parser = configparser.ConfigParser()
     config_parser.optionxform = str
-    config_parser.read(INPUTS_CONFIG_FILE)
+    config_parser.read(file)
 
     column_sizes = get_table_columns(args.target, config_parser)
 
     print_table_header(column_sizes)
-    for section, fields in FIELDS_TO_CHANGE.items():
+    for section, fields in FIELDS_TO_CHANGE[file].items():
         for field, values in fields.items():
             # Get values
             field_name = f"{section}.{field}"
@@ -118,9 +123,22 @@ def main():
     print("")
 
     # Write the new config file
-    print(f"Overriding: {INPUTS_CONFIG_FILE}")
-    with open(INPUTS_CONFIG_FILE, "w", encoding="utf-8") as settings_file:
+    print(f"Overriding: {file}")
+    with open(file, "w", encoding="utf-8") as settings_file:
         config_parser.write(settings_file, space_around_delimiters=False)
+
+
+def main():
+    """Main function."""
+    parser = argparse.ArgumentParser(
+        prog="SettingsConverter",
+        description="Used for converting: League Setting <--> TFT_VALUE Settings",
+    )
+    parser.add_argument("-t", "--target", type=str, choices=[LEAGUE_VALUE, TFT_VALUE], required=True)
+    args = parser.parse_args()
+
+    for file in FILES:
+        update_file(args, file)
 
     try:
         print(f"Deleting settings file (so that changes take effect): {PERSISTED_SETTINGS_FILE}")
