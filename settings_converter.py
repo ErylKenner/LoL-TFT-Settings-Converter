@@ -1,4 +1,5 @@
 import argparse
+import itertools
 import pathlib
 import configparser
 import os
@@ -43,64 +44,60 @@ class TableWriter():
     def __init__(self):
         self._headers = []
         self._rows = []
-        self._column_sizes = None
+        self._width = 0
+        self._column_widths = {}
 
     def add_header(self, args):
         self._headers.append(args)
 
-        # Update column sizes
-        if self._column_sizes is None:
-            self._column_sizes = [len(column) for column in args]
-        else:
-            for i, column in enumerate(args):
-                if len(column) > self._column_sizes[i]:
-                    self._column_sizes[i] = len(column)
-
     def add_row(self, args):
         self._rows.append(args)
 
-        # Update column sizes
-        if self._column_sizes is None:
-            self._column_sizes = [len(column) for column in args]
-        else:
-            for i, column in enumerate(args):
-                if len(column) > self._column_sizes[i]:
-                    self._column_sizes[i] = len(column)
-
     def write(self):
+        self._calculate_column_widths()
+
+        self._print_table_border()
         for header in self._headers:
-            self._print_table_border()
-            self._print_table_header(header)
+            self._print_table_row(header, is_centered=True)
         self._print_table_border()
 
         for row in self._rows:
-            self._print_table_row(row)
+            self._print_table_row(row, is_centered=False)
         self._print_table_border()
         print("")
 
-    def _print_table_header(self, header):
-        """Prints the header of the table."""
-        header_row = ""
-        for header, size in zip(header, self._column_sizes):
-            header_row += f"| {header: ^{size}} "
-        header_row += "|"
+    def _calculate_column_widths(self):
+        for row in itertools.chain(self._headers, self._rows):
+            num_columns = len(row)
+            column_widths = [len(column) + 2 for column in row]
+            if num_columns in self._column_widths:
+                for i, existing_column in enumerate(self._column_widths[num_columns]):
+                    if existing_column > column_widths[i]:
+                        column_widths[i] = existing_column
+            self._column_widths[num_columns] = column_widths
+        self._width = max(
+            [sum(column_widths) + len(column_widths) - 1 for column_widths in self._column_widths.values()])
 
-        print(header_row)
-
-    def _print_table_row(self, values):
+    def _print_table_row(self, values, is_centered):
         """Prints a row of the table with the given values."""
-        value_str = ""
-        for value, size in zip(values, self._column_sizes):
-            value_str += f"| {value: <{size}} "
-        value_str += "|"
+        # Pad column widths (if necessary) so each row is the same width as the global width
+        num_columns = len(values)
+        column_widths = self._column_widths[num_columns]
+        column = 0
+        while sum(column_widths) + num_columns - 1 < self._width:
+            column_widths[column] += 1
+            column = (column + 1) % num_columns
+
+        # Create the string
+        value_str = "|"
+        for value, column_width in zip(values, column_widths):
+            centering = "^" if is_centered else "<"
+            value_str += f" {value: {centering}{column_width - 2}} |"
         print(value_str)
 
     def _print_table_border(self):
         """Prints the borders of the table."""
-        border_str = ""
-        for size in self._column_sizes:
-            border_str += f"+={'=' * size}="
-        border_str += "+"
+        border_str = f"+{'=' * self._width}+"
         print(border_str)
 
 
@@ -111,9 +108,10 @@ def update_file(args, file):
     config_parser.read(file)
 
     table_writer = TableWriter()
+    table_writer.add_header([str(file)])
+    table_writer.add_header([""])
     table_writer.add_header(COLUMN_HEADERS)
 
-    # print_table_header(column_sizes)
     for section, fields in FIELDS_TO_CHANGE[file].items():
         for field, values in fields.items():
             # Get values
@@ -134,7 +132,6 @@ def update_file(args, file):
 
     table_writer.write()
     # Write the new config file
-    print(f"Overriding: {file}")
     with open(file, "w", encoding="utf-8") as settings_file:
         config_parser.write(settings_file, space_around_delimiters=False)
 

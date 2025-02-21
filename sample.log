@@ -1,0 +1,20 @@
++=========================================================================================+
+|                    C:\Riot Games\League of Legends\Config\input.ini                     |
+|                                                                                         |
+|         Field                       | Existing Value          | New Value               |
++=========================================================================================+
+| GameEvents.evtPlayerAttackMoveClick | [<Unbound>]             | [<Unbound>]             |
+| GameEvents.evtPlayerAttackMove      | [<Unbound>],[<Unbound>] | [<Unbound>],[<Unbound>] |
+| GameEvents.evtPlayerAttackMoveavasva           | [<Unbound>],[<Unbound>]                |
+| GameEvents.cascaevtPlayerAttackMove            | [<Unbound>],[<Unbound>]                |
++=========================================================================================+
+
++=================================================+
+| C:\Riot Games\League of Legends\Config\game.cfg |
+|                                                 |
+|   Field    |   Existing Value   |   New Value   |
++=================================================+
+|    General.WindowMode     |    2     |    2     |
++=================================================+
+
+Deleting settings file (so that changes take effect): C:\Riot Games\League of Legends\Config\PersistedSettings.json
