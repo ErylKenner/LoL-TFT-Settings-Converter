@@ -29,7 +29,7 @@ FIELDS_TO_CHANGE = {
         "General": {
             "WindowMode": {
                 LEAGUE_VALUE: "0",
-                TFT_VALUE: "1",
+                TFT_VALUE: "2",
             }
         },
     },
@@ -38,58 +38,70 @@ COLUMN_HEADERS = ["Field", "Existing Value", "New Value"]
 DOES_NOT_EXIST = "DOES NOT EXIST"
 
 
-def get_table_columns(target, config_parser):
-    """Returns a list of column sizes based on the given target."""
-    column_sizes = [0, 0, 0]
-    for section, fields in FIELDS_TO_CHANGE.items():
-        for field, values in fields.items():
-            field_name_length = len(f"{field}.{section}")
-            if field_name_length > column_sizes[0]:
-                column_sizes[0] = field_name_length
+class TableWriter():
 
-            if section in config_parser and field in config_parser[section]:
-                field_value_length = len(config_parser[section][field])
-                new_value_length = len(values[target])
-            else:
-                field_value_length = len(DOES_NOT_EXIST)
-                new_value_length = len(DOES_NOT_EXIST)
+    def __init__(self):
+        self._headers = []
+        self._rows = []
+        self._column_sizes = None
 
-            if field_value_length > column_sizes[1]:
-                column_sizes[1] = field_value_length
+    def add_header(self, args):
+        self._headers.append(args)
 
-            if new_value_length > column_sizes[2]:
-                column_sizes[2] = new_value_length
-    return column_sizes
+        # Update column sizes
+        if self._column_sizes is None:
+            self._column_sizes = [len(column) for column in args]
+        else:
+            for i, column in enumerate(args):
+                if len(column) > self._column_sizes[i]:
+                    self._column_sizes[i] = len(column)
 
+    def add_row(self, args):
+        self._rows.append(args)
 
-def print_table_header(column_sizes):
-    """Prints the header of the table based on the given column sizes."""
-    inside_str = ""
-    for header, size in zip(COLUMN_HEADERS, column_sizes):
-        inside_str += f"| {header: ^{size}} "
-    inside_str += "|"
+        # Update column sizes
+        if self._column_sizes is None:
+            self._column_sizes = [len(column) for column in args]
+        else:
+            for i, column in enumerate(args):
+                if len(column) > self._column_sizes[i]:
+                    self._column_sizes[i] = len(column)
 
-    print_table_border(column_sizes)
-    print(inside_str)
-    print_table_border(column_sizes)
+    def write(self):
+        for header in self._headers:
+            self._print_table_border()
+            self._print_table_header(header)
+        self._print_table_border()
 
+        for row in self._rows:
+            self._print_table_row(row)
+        self._print_table_border()
+        print("")
 
-def print_table_border(column_sizes):
-    """Prints the borders of the table based on the given column sizes."""
-    border_str = ""
-    for size in column_sizes:
-        border_str += f"+={'=' * size}="
-    border_str += "+"
-    print(border_str)
+    def _print_table_header(self, header):
+        """Prints the header of the table."""
+        header_row = ""
+        for header, size in zip(header, self._column_sizes):
+            header_row += f"| {header: ^{size}} "
+        header_row += "|"
 
+        print(header_row)
 
-def print_table_row(values, column_sizes):
-    """Prints a row of the table with the given values and corresponding column sizes."""
-    value_str = ""
-    for value, size in zip(values, column_sizes):
-        value_str += f"| {value: <{size}} "
-    value_str += "|"
-    print(value_str)
+    def _print_table_row(self, values):
+        """Prints a row of the table with the given values."""
+        value_str = ""
+        for value, size in zip(values, self._column_sizes):
+            value_str += f"| {value: <{size}} "
+        value_str += "|"
+        print(value_str)
+
+    def _print_table_border(self):
+        """Prints the borders of the table."""
+        border_str = ""
+        for size in self._column_sizes:
+            border_str += f"+={'=' * size}="
+        border_str += "+"
+        print(border_str)
 
 
 def update_file(args, file):
@@ -98,9 +110,10 @@ def update_file(args, file):
     config_parser.optionxform = str
     config_parser.read(file)
 
-    column_sizes = get_table_columns(args.target, config_parser)
+    table_writer = TableWriter()
+    table_writer.add_header(COLUMN_HEADERS)
 
-    print_table_header(column_sizes)
+    # print_table_header(column_sizes)
     for section, fields in FIELDS_TO_CHANGE[file].items():
         for field, values in fields.items():
             # Get values
@@ -113,15 +126,13 @@ def update_file(args, file):
 
             # Print the table row
             values = [field_name, existing_value, desired_value]
-            print_table_row(values, column_sizes)
+            table_writer.add_row(values)
 
             # Assign new value if the field was present
             if section in config_parser and field in config_parser[section]:
                 config_parser[section][field] = desired_value
 
-    print_table_border(column_sizes)
-    print("")
-
+    table_writer.write()
     # Write the new config file
     print(f"Overriding: {file}")
     with open(file, "w", encoding="utf-8") as settings_file:
