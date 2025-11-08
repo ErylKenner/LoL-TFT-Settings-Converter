@@ -1,8 +1,11 @@
 import argparse
-import itertools
-import pathlib
 import configparser
+import itertools
 import os
+import pathlib
+import re
+
+import colorama
 
 PERSISTED_SETTINGS_FILE = pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\PersistedSettings.json").resolve()
 INPUTS_CONFIG_FILE = pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\Input.ini").resolve()
@@ -69,7 +72,7 @@ class TableWriter():
     def _calculate_column_widths(self):
         for row in itertools.chain(self._headers, self._rows):
             num_columns = len(row)
-            column_widths = [len(column) + 2 for column in row]
+            column_widths = [len(re.sub(r"\x1b\[[0-9;]+m", "", column)) + 2 for column in row]
             if num_columns in self._column_widths:
                 for i, existing_column in enumerate(self._column_widths[num_columns]):
                     if existing_column > column_widths[i]:
@@ -92,7 +95,9 @@ class TableWriter():
         value_str = "|"
         for value, column_width in zip(values, column_widths):
             centering = "^" if is_centered else "<"
-            value_str += f" {value: {centering}{column_width - 2}} |"
+            escape_sequences = re.findall(r"\x1b\[[0-9;]+m", value)
+            column_width = column_width - 2 + sum(len(escape_sequence) for escape_sequence in escape_sequences)
+            value_str += f" {value: {centering}{column_width}} |"
         print(value_str)
 
     def _print_table_border(self):
@@ -124,6 +129,9 @@ def update_file(args, file):
 
             # Print the table row
             values = [field_name, existing_value, desired_value]
+            if existing_value != desired_value:
+                values[1] = f"{colorama.Fore.RED}{existing_value}{colorama.Fore.RESET}"
+                values[2] =f"{colorama.Fore.GREEN}{desired_value}{colorama.Fore.RESET}"
             table_writer.add_row(values)
 
             # Assign new value if the field was present
@@ -145,6 +153,7 @@ def main():
     parser.add_argument("-t", "--target", type=str, choices=[LEAGUE_VALUE, TFT_VALUE], required=True)
     args = parser.parse_args()
 
+    colorama.init()
     for file in FILES:
         update_file(args, file)
 
