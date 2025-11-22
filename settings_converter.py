@@ -7,17 +7,16 @@ import re
 
 import colorama
 
-PERSISTED_SETTINGS_FILE = pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\PersistedSettings.json").resolve()
-INPUTS_CONFIG_FILE = pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\Input.ini").resolve()
-GAME_CFG_FILE = pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\game.cfg").resolve()
-
-FILES = [INPUTS_CONFIG_FILE, GAME_CFG_FILE]
+PERSISTED_SETTINGS_FILES = [
+    pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\PersistedSettings.json").resolve(),
+    pathlib.Path("C:\\Riot Games\\League of Legends (PBE)\\Config\\PersistedSettings.json").resolve(),
+]
 
 LEAGUE_VALUE = "league"
 TFT_VALUE = "tft"
 
 FIELDS_TO_CHANGE = {
-    INPUTS_CONFIG_FILE: {
+    pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\Input.ini").resolve(): {
         "GameEvents": {
             "evtPlayerAttackMoveClick": {
                 LEAGUE_VALUE: "[Button 1]",
@@ -29,7 +28,27 @@ FIELDS_TO_CHANGE = {
             },
         },
     },
-    GAME_CFG_FILE: {
+    pathlib.Path("C:\\Riot Games\\League of Legends (PBE)\\Config\\Input.ini").resolve(): {
+        "GameEvents": {
+            "evtPlayerAttackMoveClick": {
+                LEAGUE_VALUE: "[Button 1]",
+                TFT_VALUE: "[<Unbound>]",
+            },
+            "evtPlayerAttackMove": {
+                LEAGUE_VALUE: "[Button 1],[<Unbound>]",
+                TFT_VALUE: "[<Unbound>],[<Unbound>]",
+            },
+        },
+    },
+    pathlib.Path("C:\\Riot Games\\League of Legends\\Config\\game.cfg").resolve(): {
+        "General": {
+            "WindowMode": {
+                LEAGUE_VALUE: "0",
+                TFT_VALUE: "2",
+            }
+        },
+    },
+    pathlib.Path("C:\\Riot Games\\League of Legends (PBE)\\Config\\game.cfg").resolve(): {
         "General": {
             "WindowMode": {
                 LEAGUE_VALUE: "0",
@@ -154,14 +173,16 @@ def main():
     args = parser.parse_args()
 
     colorama.init()
-    for file in FILES:
-        update_file(args, file)
+    for file in FIELDS_TO_CHANGE.keys():
+        if file.exists():
+            update_file(args, file)
 
-    try:
-        print(f"Deleting settings file (so that changes take effect): {PERSISTED_SETTINGS_FILE}")
-        os.remove(PERSISTED_SETTINGS_FILE)
-    except OSError:
-        pass
+    for persisted_settings_file in PERSISTED_SETTINGS_FILES:
+        try:
+            os.remove(persisted_settings_file)
+            print(f"Deleted settings file (so that changes take effect): {persisted_settings_file}")
+        except OSError:
+            pass
 
     print("")
 
